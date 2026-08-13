@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kraken Gambit — Elo Prediction Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f7f4ea;
+    --bg-elevated: #fbfaf4;
+    --surface: #ffffff;
+    --surface-2: #f1efe1;
+    --border: #e2ddc6;
+    --border-soft: #eae5d2;
+    --ink: #2b2926;
+    --ink-dim: #6f6c5f;
+    --ink-faint: #9c9884;
+    --green: #81b64c;
+    --green-soft: #9bce68;
+    --green-deep: #4b7139;
+    --green-forest: #33501f;
+    --green-glow: rgba(129, 182, 76, 0.22);
+    --board-light: #eeeed2;
+    --board-dark: #769656;
+    --teal: #2f8f6f;
+    --amber: #c9822f;
+    --red: #c94f4f;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(129, 182, 76, 0.14), transparent),
+      repeating-conic-gradient(from 0deg, var(--bg) 0deg 90deg, #f1efdf 90deg 180deg);
+    background-size: auto, 56px 56px;
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 56px 20px 80px;
+  }
+
+  /* ---------- Header / Logo ---------- */
+
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 44px;
+  }
+
+  .logo-badge {
+    width: 132px;
+    height: auto;
+    margin-bottom: 18px;
+    display: block;
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(28px, 6vw, 36px);
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    background: linear-gradient(180deg, #2b2926 0%, #4b7139 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tagline {
+    font-size: 14.5px;
+    color: var(--ink-dim);
+    margin: 0;
+    max-width: 380px;
+    line-height: 1.5;
+  }
+
+  .tagline .ink-accent {
+    color: var(--green-deep);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  /* ---------- Input panel ---------- */
+
+  .panel {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: 0 20px 50px -34px rgba(43, 41, 38, 0.35);
+  }
+
+  .field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .field-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  .field-hint {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  textarea#pgn-input {
+    width: 100%;
+    min-height: 150px;
+    resize: vertical;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.65;
+    padding: 16px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  textarea#pgn-input::placeholder {
+    color: var(--ink-faint);
+  }
+
+  textarea#pgn-input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 4px var(--green-glow);
+  }
+
+  .field-error {
+    font-size: 13px;
+    color: var(--red);
+    margin-top: 8px;
+    display: none;
+  }
+
+  .field-error.visible { display: block; }
+
+  .predict-btn {
+    appearance: none;
+    border: none;
+    width: 100%;
+    margin-top: 18px;
+    padding: 15px 20px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, var(--green-soft) 0%, var(--green) 55%, var(--green-deep) 100%);
+    color: #16260d;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15.5px;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 14px 28px -14px rgba(75, 113, 57, 0.55);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  }
+
+  .predict-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+  .predict-btn:active { transform: translateY(0); filter: brightness(0.97); }
+
+  .predict-btn:focus-visible {
+    outline: 2px solid var(--green-deep);
+    outline-offset: 3px;
+  }
+
+  .predict-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.15) brightness(0.92);
+    transform: none;
+  }
+
+  .predict-btn .btn-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ---------- Loading state ---------- */
+
+  .status-block {
+    margin-top: 22px;
+    padding: 26px 20px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+  }
+
+  .status-block.hidden { display: none; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: conic-gradient(var(--green) 0deg, var(--green) 90deg, transparent 90deg, transparent 360deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 14px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0 0 4px;
+  }
+
+  .status-sub {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  /* ---------- Error state ---------- */
+
+  .error-block {
+    margin-top: 22px;
+    padding: 18px 20px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(201, 79, 79, 0.3);
+    background: rgba(201, 79, 79, 0.08);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .error-block.hidden { display: none; }
+
+  .error-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--red);
+  }
+
+  .error-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin: 0 0 3px;
+    color: #96322f;
+  }
+
+  .error-text {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ---------- Results ---------- */
+
+  .results {
+    margin-top: 26px;
+    animation: rise 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .results.hidden { display: none; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .elo-hero {
+    background:
+      radial-gradient(ellipse 400px 200px at 50% 0%, rgba(129, 182, 76, 0.18), transparent),
+      linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 34px 20px 30px;
+    text-align: center;
+  }
+
+  .elo-label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+
+  .elo-number {
+    display: block;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: clamp(56px, 14vw, 76px);
+    line-height: 1;
+    background: linear-gradient(180deg, var(--green-deep) 0%, var(--green-forest) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.02em;
+  }
+
+  .elo-tier {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 18px 12px;
+    text-align: center;
+  }
+
+  .stat-value {
+    display: block;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 24px;
+    margin-bottom: 3px;
+  }
+
+  .stat-card.acpl .stat-value { color: var(--teal); }
+  .stat-card.blunders .stat-value { color: var(--red); }
+  .stat-card.mistakes .stat-value { color: var(--amber); }
+
+  .stat-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .stat-desc {
+    display: block;
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    margin-top: 3px;
+  }
+
+  /* ---------- About section (text + board image) ---------- */
+
+  .about {
+    margin-top: 34px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 28px 26px;
+    box-shadow: 0 20px 50px -34px rgba(43, 41, 38, 0.35);
+  }
+
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 30px;
+    align-items: center;
+  }
+
+  .about-text h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 21px;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+
+  .about-text p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    margin: 0 0 12px;
+  }
+
+  .about-text p:last-child {
+    margin-bottom: 0;
+  }
+
+  .about-board {
+    display: flex;
+    flex-direction: column; /* Stacks the text and image vertically */
+    align-items: center;    /* Centers them horizontally */
+    justify-content: center;
+    gap: 12px;              /* Adds a gap between the text and the board */
+  }
+
+  /* Optional: Styles the text to match your custom fonts and colors */
+  .about-board h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 24px;
+    color: #4b7139;
+    margin: 0;
+  }
+
+  .about-board .board-svg {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+  }
+
+  @media (max-width: 620px) {
+    .about-grid {
+      grid-template-columns: 1fr;
+    }
+    .about-board {
+      order: -1;
+    }
+    .about-board .board-svg {
+      max-width: 320px;
+    }
+  }
+
+  /* ---------- Puzzle solver (position photo upload) ---------- */
+
+  .puzzle {
+    margin-top: 34px;
+  }
+
+  .panel-desc {
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    line-height: 1.55;
+    margin: -6px 0 18px;
+  }
+
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .dropzone:hover,
+  .dropzone:focus-visible,
+  .dropzone.dragover {
+    border-color: var(--green);
+    background: var(--green-glow);
+    outline: none;
+  }
+
+  .dropzone.has-file {
+    padding: 14px 16px;
+    cursor: default;
+    text-align: left;
+  }
+
+  .dropzone-empty.hidden,
+  .dropzone-filled.hidden {
+    display: none;
+  }
+
+  .dropzone-icon {
+    display: inline-flex;
+    color: var(--green-deep);
+    margin-bottom: 10px;
+  }
+
+  .dropzone-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .dropzone-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    margin: 0 0 3px;
+  }
+
+  .dropzone-hint {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .preview-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .preview-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    flex-shrink: 0;
+  }
+
+  .preview-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .preview-filename {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .preview-meta {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin: 2px 0 0;
+  }
+
+  .preview-remove {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .preview-remove:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .puzzle-results-grid {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 22px;
+    align-items: start;
+  }
+
+  .puzzle-image {
+    width: 100%;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-soft);
+    display: block;
+  }
+
+  .outcome-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--green-glow);
+    color: var(--green-forest);
+    border: 1px solid rgba(75, 113, 57, 0.25);
+    margin-bottom: 12px;
+  }
+
+  .move-list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .move-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+
+  .move-index {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #16260d;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .move-text {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+
+  .puzzle-reset {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .puzzle-reset:hover {
+    border-color: var(--green-deep);
+    color: var(--green-deep);
+  }
+
+  @media (max-width: 620px) {
+    .puzzle-results-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  footer.credit {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 420px) {
+    .stat-grid { gap: 8px; }
+    .stat-card { padding: 14px 6px; }
+    .stat-value { font-size: 19px; }
+    .opening { padding: 22px 16px 20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation-duration: 1.6s; }
+    .results { animation: none; }
+    .predict-btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="wrap">
+
+    <header class="header">
+      <img class="logo-badge" src="./chess-logo-v2.png">
+
+      <h1 class="wordmark">ELO Guesser</h1>
+      <p class="tagline">Paste a game, and the engine reads a rating from every move you made. Powered by <span class="ink-accent">Stockfish</span> under the hood.</p>
+    </header>
+
+    <section class="panel">
+      <div class="field-head">
+        <label class="field-label" for="pgn-input">Move list</label>
+        <span class="field-hint">space-separated PGN</span>
+      </div>
+      <textarea id="pgn-input" placeholder="e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O ..." spellcheck="false"></textarea>
+      <p class="field-error" id="field-error">Paste your move list before running a prediction.</p>
+
+      <button class="predict-btn" id="predict-btn" type="button">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#16260d"/>
+        </svg>
+        <span id="btn-label">Predict Elo</span>
+      </button>
+    </section>
+
+    <section class="status-block hidden" id="loading" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="status-title">Analyzing moves&hellip;</p>
+      <p class="status-sub">Running engine evaluation on every move. Usually takes a few seconds.</p>
+    </section>
+
+    <section class="error-block hidden" id="error-block" aria-live="assertive">
+      <svg class="error-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <p class="error-title" id="error-title">Couldn't reach the engine</p>
+        <p class="error-text" id="error-text">Make sure the backend is running at 127.0.0.1:8000 and try again.</p>
+      </div>
+    </section>
+
+    <section class="results hidden" id="results">
+      <div class="elo-hero">
+        <span class="elo-label">Estimated Elo</span>
+        <span class="elo-number" id="elo-value">0</span>
+        <span class="elo-tier" id="elo-tier">—</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card acpl">
+          <span class="stat-value" id="acpl-value">–</span>
+          <span class="stat-label">ACPL</span>
+          <span class="stat-desc">Avg. centipawn loss</span>
+        </div>
+        <div class="stat-card blunders">
+          <span class="stat-value" id="blunders-value">–</span>
+          <span class="stat-label">Blunders</span>
+        </div>
+        <div class="stat-card mistakes">
+          <span class="stat-value" id="mistakes-value">–</span>
+          <span class="stat-label">Mistakes</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="about">
+      <div class="about-grid">
+        <div class="about-text">
+          <h2>About this project</h2>
+          <p>Team C.C.A. bridges the gap between traditional chess and modern machine learning through two core projects:</p>
+          <p>Instant Skill Assessment: Traditional systems take dozens of games to find your rating. We built an XGBoost pipeline that predicts a player's ELO from a single game's move quality. This enables rapid skill calibration, "smurf" detection, and anti-cheat monitoring.</p>
+          <p>Custom AI Evaluator: We built our own AI opponent. By training a PyTorch CNN on millions of board states (FENs), our model evaluates positions natively and uses a Minimax algorithm to calculate the best future moves.</p>
+          <p>Together, these projects prove that chess mastery is deeply encoded in the mathematical quality of every move.</p>
+        </div>
+        <div class="about-board">
+          <h1>Queen's Gambit</h1>
+          <img class="board-svg" src="queens_gambit.png">
+        </div>
+      </div>
+    </section>
+
+    <section class="panel puzzle">
+      <div class="field-head">
+        <span class="field-label">Position Image</span>
+        <span class="field-hint">PNG or JPG</span>
+      </div>
+      <p class="panel-desc">Upload a screenshot of a position &mdash; from chess.com, Lichess, or anywhere else &mdash; and the engine works out the moves that win material or force checkmate, puzzle-style.</p>
+
+      <input type="file" id="position-input" accept="image/*" hidden />
+
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload a chess position image">
+        <div class="dropzone-empty" id="dropzone-empty">
+          <span class="dropzone-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 3v12m0-12 4 4m-4-4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <p class="dropzone-title">Drop a screenshot here</p>
+          <p class="dropzone-hint">or click to browse</p>
+        </div>
+        <div class="dropzone-filled hidden" id="dropzone-filled">
+          <div class="preview-wrap">
+            <img class="preview-thumb" id="preview-thumb" alt="Selected position preview" />
+            <div class="preview-info">
+              <p class="preview-filename" id="preview-filename"></p>
+              <p class="preview-meta" id="preview-meta"></p>
+            </div>
+            <button type="button" class="preview-remove" id="preview-remove" aria-label="Remove image">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
+                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="field-error" id="puzzle-field-error">Please choose an image file (PNG or JPG).</p>
+
+      <button class="predict-btn" id="puzzle-btn" type="button" disabled>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#16260d"/>
+        </svg>
+        <span id="puzzle-btn-label">Find the Winning Line</span>
+      </button>
+    </section>
+
+    <section class="status-block hidden" id="puzzle-loading" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="status-title">Reading the board&hellip;</p>
+      <p class="status-sub">Locating the pieces and calculating the winning sequence.</p>
+    </section>
+
+    <section class="error-block hidden" id="puzzle-error" aria-live="assertive">
+      <svg class="error-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <p class="error-title">Couldn't solve that position</p>
+        <p class="error-text" id="puzzle-error-text">Make sure the backend is running and try again.</p>
+      </div>
+    </section>
+
+    <section class="results hidden" id="puzzle-results">
+      <div class="puzzle-results-grid">
+        <img class="puzzle-image" id="result-image" alt="Uploaded chess position" />
+        <div>
+          <span class="outcome-badge" id="result-outcome">Solution</span>
+          <ol class="move-list" id="move-list"></ol>
+          <button type="button" class="puzzle-reset" id="puzzle-reset">Analyze another position</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="about" style="margin-top: 34px; margin-bottom: 20px;">
+      <div class="about-text" style="grid-column: 1 / -1;">
+        <h2>How it works under the hood</h2>
+        <p><strong>The ELO Predictor (XGBoost):</strong> Instead of calculating ratings based on wins and losses, this AI evaluates <em>how</em> you play. It uses the Stockfish engine to measure mathematical metrics like centipawn loss, blunder rates, and move sharpness. A machine learning model (XGBoost), trained on thousands of human games, then analyzes these patterns to predict your exact rating.</p>
+        <p><strong>The Vision & Puzzle AI (PyTorch + Minimax):</strong> When you upload a screenshot, a Convolutional Neural Network (CNN) "reads" the pixels to digitally map the board. Once mapped, our custom Minimax search algorithm takes over. It calculates thousands of possible future moves—ignoring bad paths to save computation time—to find forced checkmates and winning tactics.</p>
+      </div>
+    </section>
+    
+    <footer class="credit">ELO Guesser &middot; local inference via FastAPI + Stockfish</footer>
+
+  </main>
+
+<script>
+  const API_URL = 'http://127.0.0.1:8000/predict_elo';
+
+  const input = document.getElementById('pgn-input');
+  const button = document.getElementById('predict-btn');
+  const btnLabel = document.getElementById('btn-label');
+  const fieldError = document.getElementById('field-error');
+  const loadingBlock = document.getElementById('loading');
+  const errorBlock = document.getElementById('error-block');
+  const errorText = document.getElementById('error-text');
+  const resultsBlock = document.getElementById('results');
+
+  const eloValue = document.getElementById('elo-value');
+  const eloTier = document.getElementById('elo-tier');
+  const acplValue = document.getElementById('acpl-value');
+  const blundersValue = document.getElementById('blunders-value');
+  const mistakesValue = document.getElementById('mistakes-value');
+
+  function setHidden(el, hidden) {
+    el.classList.toggle('hidden', hidden);
+  }
+
+  function eloTierLabel(elo) {
+    if (elo < 1000) return 'Beginner tactics';
+    if (elo < 1400) return 'Developing player';
+    if (elo < 1800) return 'Solid club strength';
+    if (elo < 2200) return 'Expert-level precision';
+    return 'Grandmaster-caliber play';
+  }
+
+  function animateNumber(el, target, duration = 900) {
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(start + (target - start) * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  async function predictElo() {
+    const moves = input.value.trim();
+
+    setHidden(fieldError, true);
+    setHidden(errorBlock, true);
+
+    if (!moves) {
+      setHidden(fieldError, false);
+      input.focus();
+      return;
+    }
+
+    setHidden(resultsBlock, true);
+    setHidden(loadingBlock, false);
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    btnLabel.textContent = 'Analyzing…';
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pgn_moves: moves })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const elo = Number(data.estimated_elo ?? 0);
+      const acpl = data.acpl ?? '–';
+      const blunders = data.blunders ?? '–';
+      const mistakes = data.mistakes ?? '–';
+
+      animateNumber(eloValue, elo);
+      eloTier.textContent = eloTierLabel(elo);
+      acplValue.textContent = acpl;
+      blundersValue.textContent = blunders;
+      mistakesValue.textContent = mistakes;
+
+      setHidden(resultsBlock, false);
+      resultsBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    } catch (err) {
+      let message = 'Something went wrong while analyzing your moves. Please try again.';
+      if (err instanceof TypeError) {
+        message = 'Could not reach the backend. Make sure it is running at 127.0.0.1:8000 and that CORS is enabled.';
+      } else if (err.message) {
+        message = err.message;
+      }
+      errorText.textContent = message;
+      setHidden(errorBlock, false);
+
+    } finally {
+      setHidden(loadingBlock, true);
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      btnLabel.textContent = 'Predict Elo';
+    }
+  }
+
+  button.addEventListener('click', predictElo);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      predictElo();
+    }
+  });
+
+  input.addEventListener('input', () => setHidden(fieldError, true));
+
+  // ---------- Puzzle solver (position photo -> winning line) ----------
+  // NOTE: adjust this URL, the form field name ('image'), and the response
+  // parsing below to match your actual second model's API contract.
+  const PUZZLE_API_URL = 'http://127.0.0.1:8000/solve_position';
+
+  const positionInput = document.getElementById('position-input');
+  const dropzone = document.getElementById('dropzone');
+  const dropzoneEmpty = document.getElementById('dropzone-empty');
+  const dropzoneFilled = document.getElementById('dropzone-filled');
+  const previewThumb = document.getElementById('preview-thumb');
+  const previewFilename = document.getElementById('preview-filename');
+  const previewMeta = document.getElementById('preview-meta');
+  const previewRemove = document.getElementById('preview-remove');
+  const puzzleFieldError = document.getElementById('puzzle-field-error');
+  const puzzleBtn = document.getElementById('puzzle-btn');
+  const puzzleBtnLabel = document.getElementById('puzzle-btn-label');
+  const puzzleLoading = document.getElementById('puzzle-loading');
+  const puzzleError = document.getElementById('puzzle-error');
+  const puzzleErrorText = document.getElementById('puzzle-error-text');
+  const puzzleResults = document.getElementById('puzzle-results');
+  const resultImage = document.getElementById('result-image');
+  const resultOutcome = document.getElementById('result-outcome');
+  const moveList = document.getElementById('move-list');
+  const puzzleReset = document.getElementById('puzzle-reset');
+
+  let selectedFile = null;
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      setHidden(puzzleFieldError, false);
+      return;
+    }
+    setHidden(puzzleFieldError, true);
+    selectedFile = file;
+
+    const url = URL.createObjectURL(file);
+    previewThumb.src = url;
+    previewFilename.textContent = file.name;
+    previewMeta.textContent = formatBytes(file.size);
+
+    setHidden(dropzoneEmpty, true);
+    setHidden(dropzoneFilled, false);
+    dropzone.classList.add('has-file');
+    puzzleBtn.disabled = false;
+  }
+
+  function resetPuzzle() {
+    selectedFile = null;
+    positionInput.value = '';
+    setHidden(dropzoneFilled, true);
+    setHidden(dropzoneEmpty, false);
+    dropzone.classList.remove('has-file');
+    puzzleBtn.disabled = true;
+    setHidden(puzzleResults, true);
+    setHidden(puzzleError, true);
+  }
+
+  dropzone.addEventListener('click', (e) => {
+    if (e.target.closest('.preview-remove')) return;
+    positionInput.click();
+  });
+
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      positionInput.click();
+    }
+  });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  positionInput.addEventListener('change', () => {
+    const file = positionInput.files && positionInput.files[0];
+    if (file) handleFile(file);
+  });
+
+  previewRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetPuzzle();
+  });
+
+  async function solvePosition() {
+    if (!selectedFile) return;
+
+    setHidden(puzzleError, true);
+    setHidden(puzzleResults, true);
+    setHidden(puzzleLoading, false);
+    puzzleBtn.disabled = true;
+    puzzleBtn.setAttribute('aria-busy', 'true');
+    puzzleBtnLabel.textContent = 'Analyzing…';
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+
+      const response = await fetch(PUZZLE_API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const moves = Array.isArray(data.moves) ? data.moves : [];
+      const summary = data.summary || data.outcome || data.result || 'Solution found';
+
+      resultImage.src = URL.createObjectURL(selectedFile);
+      resultOutcome.textContent = summary;
+
+      moveList.innerHTML = '';
+      if (moves.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'move-item';
+        li.textContent = 'No moves returned.';
+        moveList.appendChild(li);
+      } else {
+        moves.forEach((move, i) => {
+          const li = document.createElement('li');
+          li.className = 'move-item';
+
+          const idx = document.createElement('span');
+          idx.className = 'move-index';
+          idx.textContent = String(i + 1);
+
+          const text = document.createElement('span');
+          text.className = 'move-text';
+          text.textContent = move;
+
+          li.appendChild(idx);
+          li.appendChild(text);
+          moveList.appendChild(li);
+        });
+      }
+
+      setHidden(puzzleResults, false);
+      puzzleResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    } catch (err) {
+      let message = 'Something went wrong while analyzing the position. Please try again.';
+      if (err instanceof TypeError) {
+        message = 'Could not reach the backend. Make sure it is running and that CORS is enabled.';
+      } else if (err.message) {
+        message = err.message;
+      }
+      puzzleErrorText.textContent = message;
+      setHidden(puzzleError, false);
+
+    } finally {
+      setHidden(puzzleLoading, true);
+      puzzleBtn.disabled = false;
+      puzzleBtn.removeAttribute('aria-busy');
+      puzzleBtnLabel.textContent = 'Find the Winning Line';
+    }
+  }
+
+  puzzleBtn.addEventListener('click', solvePosition);
+  puzzleReset.addEventListener('click', resetPuzzle);
+</script>
+</body>
+</html>
