@@ -4,6 +4,15 @@ A comprehensive machine learning pipeline that analyzes chess games, predicts pl
 
 ---
 
+## 👥 Contributors
+
+This project was built as a joint, 50/50 collaborative effort:
+
+*   **[Barbulescu Alexandra]** ([@meca-mica](https://github.com/meca-mica)) – Core developer for the **PyTorch CNN Evaluator**. Engineered the custom Convolutional Neural Network, FEN tensor translation, and spatial pattern recognition.
+*   **[Prodan Eric-Alexandru]** ([@cire1773](https://github.com/cire1773)) – Core developer for the **XGBoost ELO Predictor**. Engineered the parallel Stockfish feature extraction, adaptive depth system, and isotonic calibration pipeline.
+
+---
+
 ## 🚀 Key Features
 
 *   **XGBoost ELO Predictor (V3):** A regression model that predicts a player's ELO rating based on their move history. It utilizes parallel Stockfish processing to extract 19 advanced features—such as centipawn loss, blunder rates, and evaluation swings. The V3 pipeline includes an adaptive depth system and Isotonic Calibration to ensure highly accurate predictions across all skill brackets.
