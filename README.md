@@ -8,7 +8,7 @@ A comprehensive machine learning pipeline that analyzes chess games, predicts pl
 
 This project was built as a joint, 50/50 collaborative effort:
 
-*   **[Barbulescu Alexandra]** ([@meca-mica](https://github.com/meca-mica)) – Core developer for the **PyTorch CNN Evaluator**. Engineered the custom Convolutional Neural Network, FEN tensor translation, and spatial pattern recognition.
+*   **[Bărbulescu Alexandra]** ([@meca-mica](https://github.com/meca-mica)) – Core developer for the **PyTorch CNN Evaluator**. Engineered the custom Convolutional Neural Network, FEN tensor translation, and spatial pattern recognition.
 *   **[Prodan Eric-Alexandru]** ([@cire1773](https://github.com/cire1773)) – Core developer for the **XGBoost ELO Predictor**. Engineered the parallel Stockfish feature extraction, adaptive depth system, and isotonic calibration pipeline.
 
 ---
